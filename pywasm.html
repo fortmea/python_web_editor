@@ -1,0 +1,114 @@
+<html>
+
+<head>
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <div class="modal fade" id="modalOut" tabindex="-1" aria-labelledby="modalOut" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalOut">Python output</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="outputmodalbody">
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2"
+        crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://python.fortmea.tech/pyodide/pyodide.js"></script>
+    <script src="/scripts/require.js" crossorigin="anonymous"></script>
+
+    <script type="text/javascript">
+        require.config({ paths: { vs: '/monaco/min/vs' } });
+        var editor = null
+        require(['vs/editor/editor.main'], function () {
+            var commvalue = localStorage.getItem('lasteditorstate') || `
+# The function bellow returns some "random", ordered numbers i needed for a math problem
+from random import randint
+
+lista = []
+for x in range(50):
+    lista.append(randint(10, 87))
+    lista.sort()
+lista`
+            editor = monaco.editor.create(document.getElementById('container'), {
+
+                value: commvalue,
+                language: 'python'
+            });
+            //console.log(editor)
+            editor.onDidType(Text => {
+                localStorage.setItem('lasteditorstate', editor.getValue());
+            })
+        });
+        var pyodide = null;
+        async function main() {
+            pyodide = await loadPyodide();
+            var btn = document.getElementById("sendbt");
+            btn.disabled = false;
+            var btn2 = document.getElementById("pkbtn");
+            btn2.disabled = false;
+        }
+        main();
+        async function runCommand() {
+            var commout = editor.getValue();
+            var out;
+            try {
+                out = pyodide.runPython(commout) || "Python script didn't return any value on your main function. Check console for print output, if there's any";
+            } catch (e) {
+                out = e
+            }
+            var outputmodalbody = document.getElementById("outputmodalbody");
+            outputmodalbody.innerText = out;
+        }
+        async function installDependency() {
+            var dependency = document.getElementById("package")
+            await pyodide.loadPackage("micropip")
+            try {
+                await pyodide.runPythonAsync(`
+  import micropip
+  await micropip.install('${dependency.value}')
+`);
+            } catch (e) {
+                alert(e)
+            }
+        }
+    </script>
+    <div class="container mt-5 mb-5">
+
+        <div class="col">
+            <div class="mb-3">
+                <input type="text" class="form-control mb-3" id="package" placeholder="Package name"></input>
+                <button class="btn btn-primary mb-3" id="pkbtn" disabled="true" onclick="installDependency()">Install
+                    package</button>
+            </div><br>
+        </div>
+        <div class="row justify-content-end">
+            <button class="btn btn-primary col-2 " id="sendbt" onclick="runCommand()" disabled="true"
+                data-bs-toggle="modal" data-bs-target="#modalOut">Run command</button>
+        </div>
+        <div class="mb-3 align-self-end">
+
+        </div>
+
+        <div id="container" style="height: 100%;width:100%;"></div>
+    </div>
+
+
+</body>
+
+</html>
